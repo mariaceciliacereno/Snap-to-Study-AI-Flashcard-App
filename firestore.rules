@@ -1,0 +1,104 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default deny all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidDeck(data) {
+      return data.title is string && data.title.size() > 0 && data.title.size() <= 200 &&
+             data.subject is string && data.subject.size() <= 100 &&
+             data.sourceType in ['textbook', 'handwritten', 'slides', 'manual'] &&
+             data.cardCount is int && data.cardCount >= 0 &&
+             data.masteredCount is int && data.masteredCount >= 0 &&
+             data.reviewCount is int && data.reviewCount >= 0 &&
+             (!('tags' in data) || (data.tags is list && data.tags.size() <= 20));
+    }
+
+    function isValidFlashcard(data) {
+      return data.deckId is string && data.deckId.size() > 0 && data.deckId.size() <= 128 &&
+             data.question is string && data.question.size() > 0 && data.question.size() <= 1000 &&
+             data.answer is string && data.answer.size() > 0 && data.answer.size() <= 2000 &&
+             data.keyConcept is string && data.keyConcept.size() <= 200 &&
+             data.explanation is string && data.explanation.size() <= 2000 &&
+             data.difficulty in ['easy', 'medium', 'hard'] &&
+             data.status in ['new', 'learning', 'mastered'] &&
+             data.reviewInterval is int && data.reviewInterval >= 0 &&
+             data.repetitions is int && data.repetitions >= 0 &&
+             (!('easeFactor' in data) || data.easeFactor is number) &&
+             (!('lastReviewedAt' in data) || data.lastReviewedAt == null || data.lastReviewedAt is timestamp) &&
+             (!('nextReviewAt' in data) || data.nextReviewAt == null || data.nextReviewAt is timestamp);
+    }
+
+    match /users/{userId} {
+      allow get, list: if isSignedIn() && request.auth.uid == userId;
+
+      match /decks/{deckId} {
+        allow get, list: if isSignedIn() && request.auth.uid == userId;
+
+        allow create: if isSignedIn() &&
+                         request.auth.uid == userId &&
+                         isValidId(deckId) &&
+                         isValidDeck(incoming()) &&
+                         incoming().createdAt is timestamp &&
+                         incoming().createdAt <= request.time &&
+                         incoming().updatedAt is timestamp &&
+                         incoming().updatedAt <= request.time;
+
+        allow update: if isSignedIn() &&
+                         request.auth.uid == userId &&
+                         isValidId(deckId) &&
+                         isValidDeck(incoming()) &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().updatedAt is timestamp &&
+                         incoming().updatedAt <= request.time;
+
+        allow delete: if isSignedIn() && request.auth.uid == userId && isValidId(deckId);
+
+        match /cards/{cardId} {
+          allow get, list: if isSignedIn() && request.auth.uid == userId;
+
+          allow create: if isSignedIn() &&
+                           request.auth.uid == userId &&
+                           isValidId(cardId) &&
+                           isValidFlashcard(incoming()) &&
+                           incoming().deckId == deckId &&
+                           incoming().createdAt is timestamp &&
+                           incoming().createdAt <= request.time &&
+                           incoming().updatedAt is timestamp &&
+                           incoming().updatedAt <= request.time;
+
+          allow update: if isSignedIn() &&
+                           request.auth.uid == userId &&
+                           isValidId(cardId) &&
+                           isValidFlashcard(incoming()) &&
+                           incoming().deckId == existing().deckId &&
+                           incoming().createdAt == existing().createdAt &&
+                           incoming().updatedAt is timestamp &&
+                           incoming().updatedAt <= request.time;
+
+          allow delete: if isSignedIn() && request.auth.uid == userId && isValidId(cardId);
+        }
+      }
+    }
+  }
+}

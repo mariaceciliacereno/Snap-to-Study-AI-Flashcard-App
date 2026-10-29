@@ -1,0 +1,53 @@
+{
+  "entities": {
+    "Deck": {
+      "title": "Deck",
+      "description": "A collection of flashcards generated from camera capture or notes",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "description": "Title of the flashcard deck" },
+        "subject": { "type": "string", "description": "Subject or academic topic" },
+        "sourceType": { "type": "string", "enum": ["textbook", "handwritten", "slides", "manual"], "description": "Source origin of the flashcards" },
+        "cardCount": { "type": "integer", "description": "Total flashcards in this deck" },
+        "masteredCount": { "type": "integer", "description": "Number of mastered cards" },
+        "reviewCount": { "type": "integer", "description": "Number of cards in review" },
+        "tags": { "type": "array", "description": "Topic tags" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp of creation" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp of last update" }
+      },
+      "required": ["title", "subject", "sourceType", "cardCount", "masteredCount", "reviewCount", "createdAt", "updatedAt"]
+    },
+    "Flashcard": {
+      "title": "Flashcard",
+      "description": "An individual flashcard with question, answer, concept, and spaced repetition metadata",
+      "type": "object",
+      "properties": {
+        "deckId": { "type": "string", "description": "Parent deck identifier" },
+        "question": { "type": "string", "description": "Flashcard question / prompt" },
+        "answer": { "type": "string", "description": "Accurate answer or definition" },
+        "keyConcept": { "type": "string", "description": "Core extracted concept or term" },
+        "explanation": { "type": "string", "description": "Detailed explanation and context" },
+        "difficulty": { "type": "string", "enum": ["easy", "medium", "hard"], "description": "Subjective difficulty level" },
+        "status": { "type": "string", "enum": ["new", "learning", "mastered"], "description": "Learning progression status" },
+        "reviewInterval": { "type": "integer", "description": "Spaced repetition interval in days" },
+        "repetitions": { "type": "integer", "description": "Number of successful review repetitions" },
+        "easeFactor": { "type": "number", "description": "SM-2 ease factor" },
+        "lastReviewedAt": { "type": "string", "format": "date-time", "description": "Last reviewed timestamp" },
+        "nextReviewAt": { "type": "string", "format": "date-time", "description": "Next scheduled review timestamp" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp of creation" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp of last update" }
+      },
+      "required": ["deckId", "question", "answer", "keyConcept", "explanation", "difficulty", "status", "reviewInterval", "repetitions", "createdAt", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}/decks/{deckId}": {
+      "schema": { "$ref": "#/entities/Deck" },
+      "description": "User flashcard decks"
+    },
+    "/users/{userId}/decks/{deckId}/cards/{cardId}": {
+      "schema": { "$ref": "#/entities/Flashcard" },
+      "description": "Flashcards within a deck"
+    }
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "name": "SnapStudy",
+  "description": "Snap-to-Study AI Flashcard App: Instant digital flashcards from textbook photos and handwritten notes with Gemini AI and Cloud Sync.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
