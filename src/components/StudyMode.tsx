@@ -12,11 +12,13 @@ import {
   Award,
   BookOpen,
   Lightbulb,
-  ExternalLink
+  ExternalLink,
+  ShieldCheck
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { FlashcardDeck, Flashcard } from '../types';
 import { geminiService } from '../services/geminiService';
+import { sounds } from '../utils/soundEffects';
 
 interface StudyModeProps {
   deck: FlashcardDeck;
@@ -48,16 +50,23 @@ export const StudyMode: React.FC<StudyModeProps> = ({
 
   const currentCard: Flashcard | undefined = deck.cards[currentIndex];
 
-  // Fire confetti on complete
+  // Fire celebratory sound & confetti on complete
   useEffect(() => {
     if (isCompleted) {
+      sounds.playSuccess();
       confetti({
-        particleCount: 100,
-        spread: 70,
+        particleCount: 120,
+        spread: 80,
         origin: { y: 0.6 },
       });
     }
   }, [isCompleted]);
+
+  // Flip trigger with sound
+  const handleToggleFlip = () => {
+    sounds.playFlip();
+    setIsFlipped(!isFlipped);
+  };
 
   // Keyboard navigation
   useEffect(() => {
@@ -66,7 +75,7 @@ export const StudyMode: React.FC<StudyModeProps> = ({
 
       if (e.code === 'Space') {
         e.preventDefault();
-        setIsFlipped((prev) => !prev);
+        handleToggleFlip();
       } else if (isFlipped) {
         if (e.key === '1') handleRate('again');
         if (e.key === '2') handleRate('hard');
@@ -81,6 +90,10 @@ export const StudyMode: React.FC<StudyModeProps> = ({
 
   const handleRate = (rating: 'again' | 'hard' | 'good' | 'easy') => {
     if (!currentCard) return;
+
+    if (rating === 'easy' || rating === 'good') {
+      sounds.playSuccess();
+    }
 
     onCardReviewed(currentCard.id, rating);
     setSessionRatings((prev) => ({ ...prev, [rating]: prev[rating] + 1 }));
@@ -108,7 +121,7 @@ export const StudyMode: React.FC<StudyModeProps> = ({
     }
   };
 
-  // Ask AI to deep explain
+  // Deep AI explanation
   const handleAskAiExplanation = async (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!currentCard) return;
@@ -118,7 +131,7 @@ export const StudyMode: React.FC<StudyModeProps> = ({
         currentCard.front,
         currentCard.back,
         deck.subject,
-        'Provide an intuitive analogy, core logic breakdown, and a common exam trap for this flashcard.'
+        'Provide an intuitive analogy, core logic breakdown, and common exam traps for this flashcard.'
       );
       setAiExplanation(explanation);
     } catch (err) {
@@ -133,12 +146,12 @@ export const StudyMode: React.FC<StudyModeProps> = ({
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950 flex flex-col justify-between p-4 sm:p-6 overflow-hidden select-none">
+    <div className="fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-xl flex flex-col justify-between p-4 sm:p-6 overflow-hidden select-none">
       {/* Top Header */}
       <div className="max-w-2xl w-full mx-auto flex items-center justify-between gap-4 py-2">
         <button
           onClick={onClose}
-          className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-900 transition-colors"
+          className="p-2.5 rounded-2xl text-slate-400 hover:text-white hover:bg-slate-900 transition-colors"
           title="Exit Study Mode"
         >
           <X className="w-5 h-5" />
@@ -146,7 +159,7 @@ export const StudyMode: React.FC<StudyModeProps> = ({
 
         <div className="flex-1 max-w-xs text-center">
           <p className="text-xs font-bold text-white truncate">{deck.title}</p>
-          <p className="text-[11px] text-slate-400">
+          <p className="text-[11px] text-slate-400 font-medium">
             Card {currentIndex + 1} of {deck.cards.length}
           </p>
         </div>
@@ -161,9 +174,9 @@ export const StudyMode: React.FC<StudyModeProps> = ({
       </div>
 
       {/* Progress Bar */}
-      <div className="max-w-2xl w-full mx-auto h-1.5 bg-slate-900 rounded-full overflow-hidden mb-4">
+      <div className="max-w-2xl w-full mx-auto h-2 bg-slate-900 rounded-full overflow-hidden mb-4 border border-slate-800/80">
         <div
-          className="h-full bg-gradient-to-r from-indigo-500 to-sky-400 transition-all duration-300"
+          className="h-full bg-gradient-to-r from-indigo-500 via-sky-400 to-cyan-300 transition-all duration-300"
           style={{ width: `${((currentIndex + 1) / deck.cards.length) * 100}%` }}
         />
       </div>
@@ -173,8 +186,8 @@ export const StudyMode: React.FC<StudyModeProps> = ({
         <div className="flex-1 max-w-2xl w-full mx-auto flex flex-col justify-center items-center py-2">
           {/* 3D Flip Card Container */}
           <div
-            onClick={() => setIsFlipped(!isFlipped)}
-            className="perspective-1000 w-full h-[380px] sm:h-[420px] cursor-pointer"
+            onClick={handleToggleFlip}
+            className="perspective-1000 w-full h-[400px] sm:h-[440px] cursor-pointer"
           >
             <div
               className={`relative w-full h-full transform-style-3d transition-transform duration-500 ${
@@ -182,33 +195,33 @@ export const StudyMode: React.FC<StudyModeProps> = ({
               }`}
             >
               {/* CARD FRONT */}
-              <div className="absolute inset-0 backface-hidden rounded-3xl p-6 sm:p-8 bg-gradient-to-b from-slate-900 to-slate-950 border border-slate-800 shadow-2xl flex flex-col justify-between hover:border-slate-700 transition-colors">
+              <div className="absolute inset-0 backface-hidden rounded-3xl p-6 sm:p-8 bg-gradient-to-b from-slate-900 to-slate-950 border border-slate-800 hover:border-indigo-500/50 shadow-2xl flex flex-col justify-between transition-colors">
                 <div>
                   <div className="flex items-center justify-between gap-2 mb-4">
-                    <span className="text-xs font-bold uppercase tracking-wider text-indigo-400 bg-indigo-950/80 px-2.5 py-0.5 rounded-md border border-indigo-800/40">
+                    <span className="text-xs font-extrabold uppercase tracking-wider text-indigo-300 bg-indigo-950/90 px-3 py-1 rounded-lg border border-indigo-800/50 shadow-sm">
                       {currentCard.coreConcept}
                     </span>
                     <div className="flex items-center gap-2">
                       <button
                         onClick={(e) => speakText(currentCard.front, e)}
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-300 hover:bg-slate-800 transition-colors"
+                        className="p-2 rounded-xl text-slate-400 hover:text-indigo-300 hover:bg-slate-800 transition-colors"
                         title="Read aloud"
                       >
                         <Volume2 className="w-4 h-4" />
                       </button>
-                      <span className="text-[11px] font-semibold text-slate-500">
+                      <span className="text-[11px] font-semibold text-slate-500 bg-slate-900 px-2 py-0.5 rounded-md border border-slate-800">
                         Box {currentCard.box || 1}
                       </span>
                     </div>
                   </div>
 
                   {currentCard.keyFormulaOrTerm && (
-                    <div className="inline-block px-2.5 py-1 rounded-md bg-indigo-950/40 border border-indigo-700/40 text-[11px] font-mono text-indigo-300 mb-3">
+                    <div className="inline-block px-3 py-1 rounded-lg bg-indigo-950/60 border border-indigo-700/50 text-xs font-mono text-indigo-300 mb-3 shadow-inner">
                       {currentCard.keyFormulaOrTerm}
                     </div>
                   )}
 
-                  <h3 className="text-lg sm:text-2xl font-bold text-white leading-relaxed mt-2">
+                  <h3 className="text-xl sm:text-2xl font-extrabold text-white leading-relaxed mt-2 tracking-tight">
                     {currentCard.front}
                   </h3>
                 </div>
@@ -218,7 +231,7 @@ export const StudyMode: React.FC<StudyModeProps> = ({
                   {currentCard.hint && (
                     <div className="mb-3">
                       {showHint ? (
-                        <div className="p-3 bg-amber-950/30 border border-amber-800/40 rounded-xl text-xs text-amber-200 flex items-start gap-2">
+                        <div className="p-3 bg-amber-950/30 border border-amber-800/50 rounded-2xl text-xs text-amber-200 flex items-start gap-2 shadow-sm animate-in fade-in duration-150">
                           <Lightbulb className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
                           <span>{currentCard.hint}</span>
                         </div>
@@ -228,7 +241,7 @@ export const StudyMode: React.FC<StudyModeProps> = ({
                             e.stopPropagation();
                             setShowHint(true);
                           }}
-                          className="flex items-center gap-1.5 text-xs font-semibold text-amber-400/80 hover:text-amber-300"
+                          className="flex items-center gap-1.5 text-xs font-bold text-amber-400/90 hover:text-amber-300 transition-colors"
                         >
                           <Lightbulb className="w-3.5 h-3.5" />
                           <span>Show Hint</span>
@@ -245,32 +258,33 @@ export const StudyMode: React.FC<StudyModeProps> = ({
               </div>
 
               {/* CARD BACK */}
-              <div className="absolute inset-0 backface-hidden rotate-y-180 rounded-3xl p-6 sm:p-8 bg-gradient-to-b from-indigo-950/40 via-slate-900 to-slate-950 border border-indigo-500/60 shadow-2xl flex flex-col justify-between">
+              <div className="absolute inset-0 backface-hidden rotate-y-180 rounded-3xl p-6 sm:p-8 bg-gradient-to-b from-indigo-950/50 via-slate-900 to-slate-950 border border-indigo-500/70 shadow-2xl flex flex-col justify-between">
                 <div>
                   <div className="flex items-center justify-between gap-2 mb-3">
-                    <span className="text-xs font-bold uppercase tracking-wider text-emerald-400 bg-emerald-950/80 px-2.5 py-0.5 rounded-md border border-emerald-800/40">
-                      Answer & Core Takeaway
+                    <span className="text-xs font-extrabold uppercase tracking-wider text-emerald-400 bg-emerald-950/90 px-3 py-1 rounded-lg border border-emerald-800/50 shadow-sm flex items-center gap-1.5">
+                      <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>Answer & Core Takeaway</span>
                     </span>
                     <button
                       onClick={(e) => speakText(currentCard.back, e)}
-                      className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-300 hover:bg-slate-800 transition-colors"
+                      className="p-2 rounded-xl text-slate-400 hover:text-indigo-300 hover:bg-slate-800 transition-colors"
                       title="Read aloud"
                     >
                       <Volume2 className="w-4 h-4" />
                     </button>
                   </div>
 
-                  <p className="text-sm sm:text-base text-slate-100 leading-relaxed font-medium mb-4">
+                  <p className="text-sm sm:text-base text-slate-100 leading-relaxed font-semibold mb-4">
                     {currentCard.back}
                   </p>
 
-                  {/* Verifiable Source Snippet */}
+                  {/* Verifiable Source Citation Snippet */}
                   {currentCard.sourceSnippet && (
-                    <div className="p-3 bg-slate-950/80 rounded-xl border border-slate-800 text-[11px] text-slate-300 italic flex items-start gap-2">
+                    <div className="p-3 bg-slate-950/90 rounded-2xl border border-slate-800 text-[11px] text-slate-300 italic flex items-start gap-2 shadow-inner">
                       <Quote className="w-3.5 h-3.5 text-indigo-400 flex-shrink-0 mt-0.5" />
                       <div>
                         <span className="font-bold text-indigo-400 not-italic block mb-0.5">
-                          Verified from Scanned Notes:
+                          Verified Note Source Citation:
                         </span>
                         <span>"{currentCard.sourceSnippet}"</span>
                       </div>
@@ -279,7 +293,7 @@ export const StudyMode: React.FC<StudyModeProps> = ({
                 </div>
 
                 <div className="pt-2">
-                  {/* AI Explanation Drawer trigger */}
+                  {/* AI Explanation Drawer Trigger */}
                   <div className="flex items-center justify-between pt-2 border-t border-slate-800/80 mb-2">
                     <button
                       onClick={handleAskAiExplanation}
@@ -288,11 +302,11 @@ export const StudyMode: React.FC<StudyModeProps> = ({
                       <Sparkles className="w-3.5 h-3.5 text-amber-300" />
                       <span>{isExplaining ? 'Analyzing with AI...' : 'Ask AI: Mental Model & Exam Traps'}</span>
                     </button>
-                    <span className="text-[11px] text-slate-500">Rate your recall below</span>
+                    <span className="text-[11px] text-slate-500 font-medium">Rate recall below</span>
                   </div>
 
                   {aiExplanation && (
-                    <div className="p-3 bg-slate-900 rounded-xl border border-indigo-700/50 text-xs text-indigo-200 max-h-36 overflow-y-auto leading-relaxed mb-1">
+                    <div className="p-3 bg-slate-900 rounded-2xl border border-indigo-700/50 text-xs text-indigo-200 max-h-36 overflow-y-auto leading-relaxed mb-1 shadow-inner">
                       {aiExplanation}
                     </div>
                   )}
@@ -307,7 +321,7 @@ export const StudyMode: React.FC<StudyModeProps> = ({
               <div className="grid grid-cols-4 gap-2 animate-in fade-in slide-in-from-bottom-2 duration-200">
                 <button
                   onClick={() => handleRate('again')}
-                  className="py-3 px-2 rounded-2xl bg-red-950/40 hover:bg-red-900/60 border border-red-800/60 text-red-200 font-bold text-xs flex flex-col items-center gap-0.5 transition-all active:scale-95"
+                  className="py-3 px-2 rounded-2xl bg-red-950/40 hover:bg-red-900/60 border border-red-800/60 text-red-200 font-bold text-xs flex flex-col items-center gap-0.5 transition-all active:scale-95 shadow-sm"
                 >
                   <span className="text-sm font-extrabold text-red-400">Again</span>
                   <span className="text-[10px] text-red-400/80">&lt;10 min</span>
@@ -316,7 +330,7 @@ export const StudyMode: React.FC<StudyModeProps> = ({
 
                 <button
                   onClick={() => handleRate('hard')}
-                  className="py-3 px-2 rounded-2xl bg-amber-950/40 hover:bg-amber-900/60 border border-amber-800/60 text-amber-200 font-bold text-xs flex flex-col items-center gap-0.5 transition-all active:scale-95"
+                  className="py-3 px-2 rounded-2xl bg-amber-950/40 hover:bg-amber-900/60 border border-amber-800/60 text-amber-200 font-bold text-xs flex flex-col items-center gap-0.5 transition-all active:scale-95 shadow-sm"
                 >
                   <span className="text-sm font-extrabold text-amber-400">Hard</span>
                   <span className="text-[10px] text-amber-400/80">1 day</span>
@@ -325,7 +339,7 @@ export const StudyMode: React.FC<StudyModeProps> = ({
 
                 <button
                   onClick={() => handleRate('good')}
-                  className="py-3 px-2 rounded-2xl bg-emerald-950/40 hover:bg-emerald-900/60 border border-emerald-800/60 text-emerald-200 font-bold text-xs flex flex-col items-center gap-0.5 transition-all active:scale-95"
+                  className="py-3 px-2 rounded-2xl bg-emerald-950/40 hover:bg-emerald-900/60 border border-emerald-800/60 text-emerald-200 font-bold text-xs flex flex-col items-center gap-0.5 transition-all active:scale-95 shadow-sm"
                 >
                   <span className="text-sm font-extrabold text-emerald-400">Good</span>
                   <span className="text-[10px] text-emerald-400/80">3 days</span>
@@ -334,7 +348,7 @@ export const StudyMode: React.FC<StudyModeProps> = ({
 
                 <button
                   onClick={() => handleRate('easy')}
-                  className="py-3 px-2 rounded-2xl bg-sky-950/40 hover:bg-sky-900/60 border border-sky-800/60 text-sky-200 font-bold text-xs flex flex-col items-center gap-0.5 transition-all active:scale-95"
+                  className="py-3 px-2 rounded-2xl bg-sky-950/40 hover:bg-sky-900/60 border border-sky-800/60 text-sky-200 font-bold text-xs flex flex-col items-center gap-0.5 transition-all active:scale-95 shadow-sm"
                 >
                   <span className="text-sm font-extrabold text-sky-400">Easy</span>
                   <span className="text-[10px] text-sky-400/80">7 days</span>
@@ -344,8 +358,8 @@ export const StudyMode: React.FC<StudyModeProps> = ({
             ) : (
               <div className="flex items-center justify-center">
                 <button
-                  onClick={() => setIsFlipped(true)}
-                  className="w-full max-w-sm py-3.5 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm shadow-lg shadow-indigo-600/30 transition-all active:scale-95"
+                  onClick={handleToggleFlip}
+                  className="w-full max-w-sm py-3.5 rounded-2xl bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white font-bold text-sm shadow-xl shadow-indigo-600/30 transition-all active:scale-95"
                 >
                   Reveal Answer
                 </button>
@@ -354,36 +368,38 @@ export const StudyMode: React.FC<StudyModeProps> = ({
           </div>
         </div>
       ) : (
-        /* Deck Completed Celebration State */
+        /* Deck Completed Celebration View */
         <div className="flex-1 max-w-lg w-full mx-auto flex flex-col items-center justify-center text-center p-6 space-y-6">
-          <div className="w-20 h-20 rounded-3xl bg-emerald-500/10 border-2 border-emerald-500/30 flex items-center justify-center text-emerald-400 shadow-xl shadow-emerald-500/20">
+          <div className="w-20 h-20 rounded-3xl bg-emerald-500/10 border-2 border-emerald-500/30 flex items-center justify-center text-emerald-400 shadow-2xl shadow-emerald-500/30 animate-bounce duration-1000">
             <Award className="w-10 h-10" />
           </div>
 
           <div>
-            <h3 className="text-2xl font-extrabold text-white">Deck Mastered! 🎉</h3>
-            <p className="text-xs text-slate-400 mt-1 max-w-xs mx-auto">
+            <h3 className="text-2xl font-extrabold text-white tracking-tight">
+              Deck Mastered! 🎉
+            </h3>
+            <p className="text-xs text-slate-400 mt-1 max-w-xs mx-auto leading-relaxed">
               You reviewed all {deck.cards.length} flashcards in "{deck.title}".
             </p>
           </div>
 
-          {/* Session breakdown */}
-          <div className="w-full grid grid-cols-4 gap-2 bg-slate-900/80 p-3 rounded-2xl border border-slate-800 text-xs">
+          {/* Session Breakdown Grid */}
+          <div className="w-full grid grid-cols-4 gap-2 bg-slate-900/90 p-4 rounded-3xl border border-slate-800 text-xs shadow-inner">
             <div className="text-center">
-              <span className="block font-bold text-red-400 text-base">{sessionRatings.again}</span>
-              <span className="text-[10px] text-slate-500">Again</span>
+              <span className="block font-extrabold text-red-400 text-lg">{sessionRatings.again}</span>
+              <span className="text-[10px] text-slate-500 font-semibold">Again</span>
             </div>
             <div className="text-center">
-              <span className="block font-bold text-amber-400 text-base">{sessionRatings.hard}</span>
-              <span className="text-[10px] text-slate-500">Hard</span>
+              <span className="block font-extrabold text-amber-400 text-lg">{sessionRatings.hard}</span>
+              <span className="text-[10px] text-slate-500 font-semibold">Hard</span>
             </div>
             <div className="text-center">
-              <span className="block font-bold text-emerald-400 text-base">{sessionRatings.good}</span>
-              <span className="text-[10px] text-slate-500">Good</span>
+              <span className="block font-extrabold text-emerald-400 text-lg">{sessionRatings.good}</span>
+              <span className="text-[10px] text-slate-500 font-semibold">Good</span>
             </div>
             <div className="text-center">
-              <span className="block font-bold text-sky-400 text-base">{sessionRatings.easy}</span>
-              <span className="text-[10px] text-slate-500">Easy</span>
+              <span className="block font-extrabold text-sky-400 text-lg">{sessionRatings.easy}</span>
+              <span className="text-[10px] text-slate-500 font-semibold">Easy</span>
             </div>
           </div>
 
@@ -393,19 +409,19 @@ export const StudyMode: React.FC<StudyModeProps> = ({
                 setCurrentIndex(0);
                 setIsCompleted(false);
               }}
-              className="w-full py-3 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white transition-all shadow-md shadow-indigo-600/30"
+              className="w-full py-3 rounded-2xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white transition-all shadow-md shadow-indigo-600/30"
             >
               Study Deck Again
             </button>
             <button
               onClick={onSwitchToQuiz}
-              className="w-full py-3 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700 transition-all"
+              className="w-full py-3 rounded-2xl text-xs font-bold bg-slate-900 hover:bg-slate-800 text-amber-300 border border-slate-800 transition-all"
             >
               Test with Quiz
             </button>
             <button
               onClick={onClose}
-              className="w-full py-3 rounded-xl text-xs font-bold bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 transition-all"
+              className="w-full py-3 rounded-2xl text-xs font-bold bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 transition-all"
             >
               Back to Decks
             </button>

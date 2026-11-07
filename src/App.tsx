@@ -10,7 +10,8 @@ import {
   AlertCircle,
   Wifi,
   BatteryMedium,
-  Check
+  Check,
+  Zap
 } from 'lucide-react';
 import { Header } from './components/Header';
 import { CameraView } from './components/CameraView';
@@ -23,6 +24,7 @@ import { CloudSyncModal } from './components/CloudSyncModal';
 import { storageService } from './services/storageService';
 import { geminiService } from './services/geminiService';
 import { FlashcardDeck, GenerateDeckRequest, UserStats } from './types';
+import { sounds } from './utils/soundEffects';
 
 export default function App() {
   const [decks, setDecks] = useState<FlashcardDeck[]>([]);
@@ -66,7 +68,7 @@ export default function App() {
   const handleCaptureAndGenerate = async (params: GenerateDeckRequest) => {
     setIsGenerating(true);
     setErrorMessage(null);
-    setGenerationStep('Analyzing document layout & reading handwritten text...');
+    setGenerationStep('Deciphering document layout & reading handwriting...');
 
     const timer1 = setTimeout(() => {
       setGenerationStep('Extracting core concepts & formulas with Gemini 3.8 Flash...');
@@ -85,10 +87,11 @@ export default function App() {
       storageService.addDeck(deck);
       refreshDecks();
 
+      sounds.playSuccess();
       setSuccessToast(`🎉 Created "${deck.title}" with ${deck.cards.length} verified flashcards!`);
       setTimeout(() => setSuccessToast(null), 5000);
 
-      // Open new deck detail or go to decks
+      // Open new deck detail or go to study mode
       setSelectedDeckForDetail(deck);
       setActiveTab('decks');
     } catch (err: any) {
@@ -135,10 +138,10 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col selection:bg-indigo-500/30 selection:text-indigo-200">
       {/* Global Toast Notification */}
       {successToast && (
-        <div className="fixed top-4 right-4 z-50 flex items-center gap-2.5 px-4 py-3 rounded-2xl bg-emerald-950 border border-emerald-600/60 text-emerald-200 text-xs font-semibold shadow-2xl animate-in slide-in-from-top duration-300">
+        <div className="fixed top-4 right-4 z-50 flex items-center gap-2.5 px-4 py-3 rounded-2xl bg-emerald-950 border border-emerald-600/60 text-emerald-200 text-xs font-bold shadow-2xl animate-in slide-in-from-top duration-300">
           <Check className="w-4 h-4 text-emerald-400" />
           <span>{successToast}</span>
         </div>
@@ -172,16 +175,16 @@ export default function App() {
         setActiveTab={setActiveTab}
       />
 
-      {/* Main Content Area */}
+      {/* Main View Area */}
       <main className="flex-1 flex flex-col items-center justify-center p-0 sm:p-4 md:p-6 overflow-hidden">
         {isMobileFrame ? (
           /* MOBILE PHONE SHELL PREVIEW (React Native Smartphone Frame) */
-          <div className="relative w-full max-w-[390px] h-[780px] bg-slate-900 border-[10px] border-slate-800 rounded-[50px] shadow-2xl shadow-indigo-950/50 flex flex-col overflow-hidden my-auto">
+          <div className="relative w-full max-w-[395px] h-[790px] bg-slate-900 border-[10px] border-slate-800 rounded-[50px] shadow-2xl shadow-indigo-950/60 flex flex-col overflow-hidden my-auto ring-1 ring-slate-700/50">
             {/* Phone Notch & Status Bar */}
             <div className="h-8 bg-slate-950 px-6 flex items-center justify-between text-[11px] text-slate-400 z-30 select-none">
-              <span className="font-semibold text-slate-200">9:41</span>
-              {/* Dynamic Island / Notch */}
-              <div className="w-24 h-4 bg-black rounded-full" />
+              <span className="font-bold text-slate-200">9:41</span>
+              {/* Dynamic Island */}
+              <div className="w-24 h-4 bg-black rounded-full shadow-inner" />
               <div className="flex items-center gap-1.5">
                 <Wifi className="w-3.5 h-3.5" />
                 <BatteryMedium className="w-4 h-4 text-slate-200" />
@@ -241,7 +244,7 @@ export default function App() {
           /* RESPONSIVE FULL DESKTOP / TABLET VIEW */
           <div className="w-full h-full flex-1 flex flex-col max-w-7xl mx-auto">
             {activeTab === 'snap' ? (
-              <div className="flex-1 w-full max-w-4xl mx-auto h-[680px] rounded-3xl overflow-hidden border border-slate-800 shadow-2xl flex flex-col">
+              <div className="flex-1 w-full max-w-4xl mx-auto h-[690px] rounded-3xl overflow-hidden border border-slate-800 shadow-2xl flex flex-col">
                 <CameraView
                   onCaptureAndGenerate={handleCaptureAndGenerate}
                   isGenerating={isGenerating}
