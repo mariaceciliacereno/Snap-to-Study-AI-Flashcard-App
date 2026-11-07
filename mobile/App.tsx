@@ -9,14 +9,9 @@ import {
   Dimensions,
   Alert,
   ActivityIndicator,
+  Animated,
 } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-  interpolate,
-} from 'react-native-reanimated';
 
 const { width } = Dimensions.get('window');
 
@@ -73,32 +68,35 @@ export default function App() {
   const [isFlipped, setIsFlipped] = useState(false);
 
   const cameraRef = useRef<any>(null);
-  const flipRotation = useSharedValue(0);
+  
+  // Use core React Native Animated (Zero external animation dependencies)
+  const flipAnim = useRef(new Animated.Value(0)).current;
 
-  // 3D Flip Card Animation Styles
-  const frontAnimatedStyle = useAnimatedStyle(() => {
-    const rotateValue = interpolate(flipRotation.value, [0, 180], [0, 180]);
-    return {
-      transform: [{ perspective: 1000 }, { rotateY: `${rotateValue}deg` }],
-      backfaceVisibility: 'hidden',
-    };
+  const frontInterpolate = flipAnim.interpolate({
+    inputRange: [0, 180],
+    outputRange: ['0deg', '180deg'],
   });
 
-  const backAnimatedStyle = useAnimatedStyle(() => {
-    const rotateValue = interpolate(flipRotation.value, [0, 180], [180, 360]);
-    return {
-      transform: [{ perspective: 1000 }, { rotateY: `${rotateValue}deg` }],
-      backfaceVisibility: 'hidden',
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-    };
+  const backInterpolate = flipAnim.interpolate({
+    inputRange: [0, 180],
+    outputRange: ['180deg', '360deg'],
   });
+
+  const frontAnimatedStyle = {
+    transform: [{ perspective: 1000 }, { rotateY: frontInterpolate }],
+  };
+
+  const backAnimatedStyle = {
+    transform: [{ perspective: 1000 }, { rotateY: backInterpolate }],
+  };
 
   const toggleFlip = () => {
-    flipRotation.value = withTiming(isFlipped ? 0 : 180, { duration: 350 });
+    Animated.spring(flipAnim, {
+      toValue: isFlipped ? 0 : 180,
+      friction: 8,
+      tension: 10,
+      useNativeDriver: true,
+    }).start();
     setIsFlipped(!isFlipped);
   };
 
@@ -106,7 +104,7 @@ export default function App() {
     if (!cameraRef.current) return;
     try {
       setIsExtracting(true);
-      const photo = await cameraRef.current.takePictureAsync({ base64: true, quality: 0.8 });
+      await cameraRef.current.takePictureAsync({ base64: true, quality: 0.8 });
 
       // Simulated extraction or connect to your SnapStudy server
       setTimeout(() => {
@@ -125,7 +123,7 @@ export default function App() {
   };
 
   const rateCard = (rating: 'again' | 'good' | 'easy') => {
-    flipRotation.value = 0;
+    flipAnim.setValue(0);
     setIsFlipped(false);
     if (currentIndex < cards.length - 1) {
       setCurrentIndex(currentIndex + 1);
@@ -362,9 +360,18 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     borderWidth: 1,
     borderColor: '#334155',
+    backfaceVisibility: 'hidden',
   },
   frontCard: { backgroundColor: '#0f172a' },
-  backCard: { backgroundColor: '#1e1b4b', borderColor: '#4f46e5' },
+  backCard: {
+    backgroundColor: '#1e1b4b',
+    borderColor: '#4f46e5',
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
   conceptLabel: { color: '#818cf8', fontSize: 12, textTransform: 'uppercase', fontWeight: '700' },
   frontText: { color: '#f8fafc', fontSize: 20, fontWeight: '700', lineHeight: 28 },
   backText: { color: '#f8fafc', fontSize: 16, lineHeight: 24 },
