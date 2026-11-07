@@ -1,0 +1,10 @@
+{
+  "name": "SnapStudy AI - Snap-to-Flashcards",
+  "description": "Snap a photo of textbooks or handwritten notes to instantly generate verified study flashcard decks with spaced repetition and export to Anki, Quizlet, and React Native.",
+  "requestFramePermissions": [
+    "camera"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
