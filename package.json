@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "tsx server.ts",
     "start": "tsx server.ts",
+    "mobile": "npm --prefix mobile install && npm --prefix mobile start",
+    "expo": "npm --prefix mobile start",
     "build": "vite build",
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
