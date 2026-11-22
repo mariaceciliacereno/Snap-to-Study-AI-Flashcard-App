@@ -1,0 +1,135 @@
+{
+  "entities": {
+    "Profile": {
+      "title": "Profile",
+      "description": "Student account profile and study goal preferences",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "displayName": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "email": { "type": "string", "format": "email", "maxLength": 254 },
+        "photoUrl": { "type": "string", "maxLength": 1000 },
+        "studyGoalDaily": { "type": "integer" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "displayName", "email", "studyGoalDaily", "createdAt", "updatedAt"]
+    },
+    "Subject": {
+      "title": "Subject",
+      "description": "Academic subject category owned by a student",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "accentColor": { "type": "string", "minLength": 1, "maxLength": 32 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "name", "accentColor", "createdAt", "updatedAt"]
+    },
+    "FlashcardDeck": {
+      "title": "FlashcardDeck",
+      "description": "Topic deck containing generated digital flashcards",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "subjectId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "subjectName": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "title": { "type": "string", "minLength": 1, "maxLength": 140 },
+        "topic": { "type": "string", "minLength": 1, "maxLength": 140 },
+        "cardCount": { "type": "integer" },
+        "extractedSummary": { "type": "string", "maxLength": 2000 },
+        "readabilityWarning": { "type": "string", "maxLength": 500 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "subjectId", "subjectName", "title", "topic", "cardCount", "createdAt", "updatedAt"]
+    },
+    "Flashcard": {
+      "title": "Flashcard",
+      "description": "Individual question and answer flashcard belonging to a deck",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "deckId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "subject": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "topic": { "type": "string", "minLength": 1, "maxLength": 140 },
+        "cardNumber": { "type": "integer" },
+        "question": { "type": "string", "minLength": 1, "maxLength": 1000 },
+        "answer": { "type": "string", "minLength": 1, "maxLength": 2000 },
+        "questionStyle": {
+          "type": "string",
+          "enum": ["definition", "identification", "conceptual", "explanation", "fact", "application"]
+        },
+        "sourceGrounding": {
+          "type": "string",
+          "enum": ["direct", "ai_clarification"]
+        },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "deckId", "subject", "topic", "cardNumber", "question", "answer", "questionStyle", "sourceGrounding", "createdAt", "updatedAt"]
+    },
+    "StudyProgress": {
+      "title": "StudyProgress",
+      "description": "Student mastery difficulty rating and review count per flashcard",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "deckId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "cardId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "difficulty": {
+          "type": "string",
+          "enum": ["easy", "medium", "difficult"]
+        },
+        "reviewCount": { "type": "integer" },
+        "lastReviewedAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "deckId", "cardId", "difficulty", "reviewCount", "lastReviewedAt", "updatedAt"]
+    },
+    "ScannedDocument": {
+      "title": "ScannedDocument",
+      "description": "Metadata and compressed preview thumbnail for scanned study pages",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "deckId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "subjectName": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "topic": { "type": "string", "minLength": 1, "maxLength": 140 },
+        "pageCount": { "type": "integer" },
+        "thumbnailDataUrl": { "type": "string", "maxLength": 150000 },
+        "isReadable": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "deckId", "subjectName", "topic", "pageCount", "isReadable", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/profiles/{userId}": {
+      "schema": { "$ref": "#/entities/Profile" },
+      "description": "Private student profile containing PII (email, display name, daily study goal)"
+    },
+    "/subjects/{subjectId}": {
+      "schema": { "$ref": "#/entities/Subject" },
+      "description": "Academic subject folders owned by the student"
+    },
+    "/flashcard_decks/{deckId}": {
+      "schema": { "$ref": "#/entities/FlashcardDeck" },
+      "description": "Flashcard decks organized by subject and topic"
+    },
+    "/flashcards/{cardId}": {
+      "schema": { "$ref": "#/entities/Flashcard" },
+      "description": "Individual flashcards linked to a parent flashcard deck"
+    },
+    "/study_progress/{progressId}": {
+      "schema": { "$ref": "#/entities/StudyProgress" },
+      "description": "Per-card difficulty ratings and review history"
+    },
+    "/scanned_documents/{scanId}": {
+      "schema": { "$ref": "#/entities/ScannedDocument" },
+      "description": "Records of captured note scans linked to generated decks"
+    }
+  }
+}

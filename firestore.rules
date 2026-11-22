@@ -1,0 +1,233 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global default-deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Primitive Helpers ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isOwnerId(uid) {
+      return isVerifiedUser() && uid == request.auth.uid;
+    }
+
+    // --- Validation Blueprints ---
+    function isValidProfile(data, userId) {
+      return data.keys().hasAll(['uid', 'displayName', 'email', 'studyGoalDaily', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['uid', 'displayName', 'email', 'photoUrl', 'studyGoalDaily', 'createdAt', 'updatedAt'])
+        && data.uid is string && data.uid == userId && isValidId(data.uid)
+        && data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 120
+        && data.email is string && data.email.size() >= 3 && data.email.size() <= 254
+        && (!('photoUrl' in data) || (data.photoUrl is string && data.photoUrl.size() <= 1000))
+        && data.studyGoalDaily is int && data.studyGoalDaily >= 5 && data.studyGoalDaily <= 200
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidSubject(data) {
+      return data.keys().hasAll(['userId', 'name', 'accentColor', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['userId', 'name', 'accentColor', 'createdAt', 'updatedAt'])
+        && data.userId is string && data.userId == request.auth.uid && isValidId(data.userId)
+        && data.name is string && data.name.size() >= 1 && data.name.size() <= 80
+        && data.accentColor is string && data.accentColor.size() >= 1 && data.accentColor.size() <= 32
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidFlashcardDeck(data) {
+      return data.keys().hasAll(['userId', 'subjectId', 'subjectName', 'title', 'topic', 'cardCount', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['userId', 'subjectId', 'subjectName', 'title', 'topic', 'cardCount', 'extractedSummary', 'readabilityWarning', 'createdAt', 'updatedAt'])
+        && data.userId is string && data.userId == request.auth.uid && isValidId(data.userId)
+        && data.subjectId is string && isValidId(data.subjectId)
+        && data.subjectName is string && data.subjectName.size() >= 1 && data.subjectName.size() <= 80
+        && data.title is string && data.title.size() >= 1 && data.title.size() <= 140
+        && data.topic is string && data.topic.size() >= 1 && data.topic.size() <= 140
+        && data.cardCount is int && data.cardCount >= 1 && data.cardCount <= 50
+        && (!('extractedSummary' in data) || (data.extractedSummary is string && data.extractedSummary.size() <= 2000))
+        && (!('readabilityWarning' in data) || (data.readabilityWarning is string && data.readabilityWarning.size() <= 500))
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidFlashcard(data) {
+      return data.keys().hasAll(['userId', 'deckId', 'subject', 'topic', 'cardNumber', 'question', 'answer', 'questionStyle', 'sourceGrounding', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['userId', 'deckId', 'subject', 'topic', 'cardNumber', 'question', 'answer', 'questionStyle', 'sourceGrounding', 'createdAt', 'updatedAt'])
+        && data.userId is string && data.userId == request.auth.uid && isValidId(data.userId)
+        && data.deckId is string && isValidId(data.deckId)
+        && data.subject is string && data.subject.size() >= 1 && data.subject.size() <= 80
+        && data.topic is string && data.topic.size() >= 1 && data.topic.size() <= 140
+        && data.cardNumber is int && data.cardNumber >= 1 && data.cardNumber <= 50
+        && data.question is string && data.question.size() >= 1 && data.question.size() <= 1000
+        && data.answer is string && data.answer.size() >= 1 && data.answer.size() <= 2000
+        && data.questionStyle in ['definition', 'identification', 'conceptual', 'explanation', 'fact', 'application']
+        && data.sourceGrounding in ['direct', 'ai_clarification']
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidStudyProgress(data) {
+      return data.keys().hasAll(['userId', 'deckId', 'cardId', 'difficulty', 'reviewCount', 'lastReviewedAt', 'updatedAt'])
+        && data.keys().hasOnly(['userId', 'deckId', 'cardId', 'difficulty', 'reviewCount', 'lastReviewedAt', 'updatedAt'])
+        && data.userId is string && data.userId == request.auth.uid && isValidId(data.userId)
+        && data.deckId is string && isValidId(data.deckId)
+        && data.cardId is string && isValidId(data.cardId)
+        && data.difficulty in ['easy', 'medium', 'difficult']
+        && data.reviewCount is int && data.reviewCount >= 1 && data.reviewCount <= 100000
+        && data.lastReviewedAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidScannedDocument(data) {
+      return data.keys().hasAll(['userId', 'deckId', 'subjectName', 'topic', 'pageCount', 'isReadable', 'createdAt'])
+        && data.keys().hasOnly(['userId', 'deckId', 'subjectName', 'topic', 'pageCount', 'thumbnailDataUrl', 'isReadable', 'createdAt'])
+        && data.userId is string && data.userId == request.auth.uid && isValidId(data.userId)
+        && data.deckId is string && isValidId(data.deckId)
+        && data.subjectName is string && data.subjectName.size() >= 1 && data.subjectName.size() <= 80
+        && data.topic is string && data.topic.size() >= 1 && data.topic.size() <= 140
+        && data.pageCount is int && data.pageCount >= 1 && data.pageCount <= 10
+        && (!('thumbnailDataUrl' in data) || (data.thumbnailDataUrl is string && data.thumbnailDataUrl.size() <= 150000))
+        && data.isReadable is bool
+        && data.createdAt is timestamp;
+    }
+
+    // --- Collection Rules ---
+
+    // 1. Profiles (PII protected: owner only)
+    match /profiles/{userId} {
+      allow get: if isValidId(userId) && isOwnerId(userId);
+      allow list: if false;
+      allow create: if isValidId(userId)
+        && isOwnerId(userId)
+        && isValidProfile(incoming(), userId)
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(userId)
+        && isOwnerId(userId)
+        && isValidProfile(incoming(), userId)
+        && incoming().uid == existing().uid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoUrl', 'studyGoalDaily', 'updatedAt']);
+      allow delete: if false;
+    }
+
+    // 2. Subjects
+    match /subjects/{subjectId} {
+      allow get: if isValidId(subjectId) && isOwnerId(existing().userId);
+      allow list: if isVerifiedUser() && existing().userId == request.auth.uid;
+      allow create: if isValidId(subjectId)
+        && isVerifiedUser()
+        && isValidSubject(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(subjectId)
+        && isOwnerId(existing().userId)
+        && isValidSubject(incoming())
+        && incoming().userId == existing().userId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'accentColor', 'updatedAt']);
+      allow delete: if isValidId(subjectId) && isOwnerId(existing().userId);
+    }
+
+    // 3. Flashcard Decks
+    match /flashcard_decks/{deckId} {
+      allow get: if isValidId(deckId) && isOwnerId(existing().userId);
+      allow list: if isVerifiedUser() && existing().userId == request.auth.uid;
+      allow create: if isValidId(deckId)
+        && isVerifiedUser()
+        && isValidFlashcardDeck(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && getAfter(/databases/$(database)/documents/subjects/$(incoming().subjectId)).data.userId == request.auth.uid;
+      allow update: if isValidId(deckId)
+        && isOwnerId(existing().userId)
+        && isValidFlashcardDeck(incoming())
+        && incoming().userId == existing().userId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          incoming().diff(existing()).affectedKeys().hasOnly(['title', 'topic', 'subjectName', 'updatedAt']) ||
+          incoming().diff(existing()).affectedKeys().hasOnly(['cardCount', 'updatedAt'])
+        );
+      allow delete: if isValidId(deckId) && isOwnerId(existing().userId);
+    }
+
+    // 4. Flashcards
+    match /flashcards/{cardId} {
+      allow get: if isValidId(cardId) && isOwnerId(existing().userId);
+      allow list: if isVerifiedUser() && existing().userId == request.auth.uid;
+      allow create: if isValidId(cardId)
+        && isVerifiedUser()
+        && isValidFlashcard(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && getAfter(/databases/$(database)/documents/flashcard_decks/$(incoming().deckId)).data.userId == request.auth.uid;
+      allow update: if isValidId(cardId)
+        && isOwnerId(existing().userId)
+        && isValidFlashcard(incoming())
+        && incoming().userId == existing().userId
+        && incoming().deckId == existing().deckId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['question', 'answer', 'subject', 'topic', 'questionStyle', 'sourceGrounding', 'updatedAt']);
+      allow delete: if isValidId(cardId) && isOwnerId(existing().userId);
+    }
+
+    // 5. Study Progress
+    match /study_progress/{progressId} {
+      allow get: if isValidId(progressId) && isOwnerId(existing().userId);
+      allow list: if isVerifiedUser() && existing().userId == request.auth.uid;
+      allow create: if isValidId(progressId)
+        && isVerifiedUser()
+        && isValidStudyProgress(incoming())
+        && incoming().lastReviewedAt == request.time
+        && incoming().updatedAt == request.time
+        && getAfter(/databases/$(database)/documents/flashcard_decks/$(incoming().deckId)).data.userId == request.auth.uid
+        && getAfter(/databases/$(database)/documents/flashcards/$(incoming().cardId)).data.userId == request.auth.uid;
+      allow update: if isValidId(progressId)
+        && isOwnerId(existing().userId)
+        && isValidStudyProgress(incoming())
+        && incoming().userId == existing().userId
+        && incoming().deckId == existing().deckId
+        && incoming().cardId == existing().cardId
+        && incoming().lastReviewedAt == request.time
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['difficulty', 'reviewCount', 'lastReviewedAt', 'updatedAt']);
+      allow delete: if isValidId(progressId) && isOwnerId(existing().userId);
+    }
+
+    // 6. Scanned Documents
+    match /scanned_documents/{scanId} {
+      allow get: if isValidId(scanId) && isOwnerId(existing().userId);
+      allow list: if isVerifiedUser() && existing().userId == request.auth.uid;
+      allow create: if isValidId(scanId)
+        && isVerifiedUser()
+        && isValidScannedDocument(incoming())
+        && incoming().createdAt == request.time
+        && getAfter(/databases/$(database)/documents/flashcard_decks/$(incoming().deckId)).data.userId == request.auth.uid;
+      allow update: if false;
+      allow delete: if isValidId(scanId) && isOwnerId(existing().userId);
+    }
+  }
+}
