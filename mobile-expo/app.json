@@ -1,0 +1,38 @@
+{
+  "expo": {
+    "name": "Snap-to-Study AI",
+    "slug": "snap-to-study-ai",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "android": {
+      "package": "com.snaptostudy.ai",
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.READ_MEDIA_IMAGES"
+      ]
+    },
+    "ios": {
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSCameraUsageDescription": "Snap-to-Study AI uses your camera to scan textbook pages and study notes into flashcards.",
+        "NSPhotoLibraryUsageDescription": "Snap-to-Study AI accesses your photos so you can upload study notes from your gallery."
+      }
+    },
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow Snap-to-Study AI to access your camera to scan notes."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Snap-to-Study AI to upload study note images from your gallery."
+        }
+      ]
+    ]
+  }
+}
